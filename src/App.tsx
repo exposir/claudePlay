@@ -163,6 +163,22 @@ function App() {
     saveConversations(updatedConversations);
   };
 
+  const handleTogglePin = (id: string) => {
+    const updatedConversations = conversations.map(conv => {
+      if (conv.id === id) {
+        return {
+          ...conv,
+          pinned: !conv.pinned,
+          updatedAt: Date.now(),
+        };
+      }
+      return conv;
+    });
+
+    setConversations(updatedConversations);
+    saveConversations(updatedConversations);
+  };
+
   // Show initial setup or settings page
   if (!hasApiKeys || showSettings) {
     return (
@@ -186,9 +202,10 @@ function App() {
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}
+        onTogglePin={handleTogglePin}
       />
       {activeConversation && (
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <ChatInterface
             openaiKey={openaiKey}
             anthropicKey={anthropicKey}

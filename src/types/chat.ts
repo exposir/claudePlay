@@ -18,6 +18,7 @@ export interface Conversation {
   model: OpenAIModel | AnthropicModel;
   createdAt: number;
   updatedAt: number;
+  pinned?: boolean;
 }
 
 export interface ChatState {

@@ -9,12 +9,13 @@ export async function sendMessageStream(
   messages: Message[],
   onChunk: (text: string) => void,
   onComplete: () => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  signal?: AbortSignal
 ) {
   if (provider === 'openai') {
-    return sendMessageStreamOpenAI(apiKey, model, messages, onChunk, onComplete, onError);
+    return sendMessageStreamOpenAI(apiKey, model, messages, onChunk, onComplete, onError, signal);
   } else if (provider === 'anthropic') {
-    return sendMessageStreamAnthropic(apiKey, model, messages, onChunk, onComplete, onError);
+    return sendMessageStreamAnthropic(apiKey, model, messages, onChunk, onComplete, onError, signal);
   } else {
     onError('Unknown AI provider');
   }

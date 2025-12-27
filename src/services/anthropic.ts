@@ -10,7 +10,8 @@ export async function sendMessageStreamAnthropic(
   messages: Message[],
   onChunk: (text: string) => void,
   onComplete: () => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  signal?: AbortSignal
 ) {
   try {
     const anthropic = new Anthropic({
@@ -28,9 +29,14 @@ export async function sendMessageStreamAnthropic(
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
         })),
+    }, {
+      signal,
     });
 
     for await (const event of stream) {
+      if (signal?.aborted) {
+        break;
+      }
       if (
         event.type === 'content_block_delta' &&
         event.delta.type === 'text_delta'
@@ -39,10 +45,18 @@ export async function sendMessageStreamAnthropic(
       }
     }
 
-    onComplete();
+    if (signal?.aborted) {
+      onError('Generation stopped by user');
+    } else {
+      onComplete();
+    }
   } catch (error) {
     if (error instanceof Error) {
-      onError(error.message);
+      if (error.name === 'AbortError') {
+        onError('Generation stopped by user');
+      } else {
+        onError(error.message);
+      }
     } else {
       onError('An unknown error occurred');
     }

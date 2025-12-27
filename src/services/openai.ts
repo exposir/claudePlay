@@ -7,7 +7,8 @@ export async function sendMessageStreamOpenAI(
   messages: Message[],
   onChunk: (text: string) => void,
   onComplete: () => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  signal?: AbortSignal
 ) {
   try {
     const openai = new OpenAI({
@@ -22,19 +23,32 @@ export async function sendMessageStreamOpenAI(
         content: msg.content,
       })),
       stream: true,
+    }, {
+      signal,
     });
 
     for await (const chunk of stream) {
+      if (signal?.aborted) {
+        break;
+      }
       const content = chunk.choices[0]?.delta?.content;
       if (content) {
         onChunk(content);
       }
     }
 
-    onComplete();
+    if (signal?.aborted) {
+      onError('Generation stopped by user');
+    } else {
+      onComplete();
+    }
   } catch (error) {
     if (error instanceof Error) {
-      onError(error.message);
+      if (error.name === 'AbortError') {
+        onError('Generation stopped by user');
+      } else {
+        onError(error.message);
+      }
     } else {
       onError('An unknown error occurred');
     }

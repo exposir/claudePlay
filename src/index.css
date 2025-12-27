@@ -2,6 +2,184 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Dreamy Animations */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.5), 0 0 40px rgba(168, 85, 247, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.8), 0 0 60px rgba(168, 85, 247, 0.5);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes aurora {
+  0%, 100% {
+    opacity: 0.3;
+    transform: rotate(0deg) scale(1);
+  }
+  33% {
+    opacity: 0.6;
+    transform: rotate(120deg) scale(1.1);
+  }
+  66% {
+    opacity: 0.4;
+    transform: rotate(240deg) scale(0.9);
+  }
+}
+
+/* Dreamy Background */
+.dreamy-bg {
+  background: linear-gradient(-45deg, #1e1b4b, #312e81, #4c1d95, #5b21b6, #6366f1, #8b5cf6);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+  position: relative;
+}
+
+.dreamy-bg::before,
+.dreamy-bg::after {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.5;
+  animation: aurora 20s ease-in-out infinite;
+}
+
+.dreamy-bg::before {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.8), transparent);
+  top: -250px;
+  left: -250px;
+}
+
+.dreamy-bg::after {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.8), transparent);
+  bottom: -250px;
+  right: -250px;
+  animation-delay: -10s;
+}
+
+/* Glass Morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+/* Neon Glow */
+.neon-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Shimmer Effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+/* BlockNote Editor - Unified White Background */
+.block-editor-wrapper .bn-editor,
+.block-editor-wrapper .bn-container,
+.block-editor-wrapper .bn-block-outer,
+.block-editor-wrapper .bn-block-content {
+  background: transparent !important;
+}
+
+.block-editor-wrapper {
+  background: transparent !important;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -9,4 +187,54 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* User message BlockNote styling - cyan/white text */
+.user-message-editor .bn-block-content,
+.user-message-editor .bn-inline-content,
+.user-message-editor .bn-block-content *,
+.user-message-editor .bn-inline-content *,
+.user-message-editor p,
+.user-message-editor h1,
+.user-message-editor h2,
+.user-message-editor h3,
+.user-message-editor h4,
+.user-message-editor h5,
+.user-message-editor h6,
+.user-message-editor li,
+.user-message-editor code,
+.user-message-editor strong,
+.user-message-editor em,
+.user-message-editor span,
+.user-message-editor div {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.user-message-editor .bn-editor {
+  background: transparent !important;
+}
+
+/* AI message BlockNote styling - purple/white text */
+.ai-message-editor .bn-block-content,
+.ai-message-editor .bn-inline-content,
+.ai-message-editor .bn-block-content *,
+.ai-message-editor .bn-inline-content *,
+.ai-message-editor p,
+.ai-message-editor h1,
+.ai-message-editor h2,
+.ai-message-editor h3,
+.ai-message-editor h4,
+.ai-message-editor h5,
+.ai-message-editor h6,
+.ai-message-editor li,
+.ai-message-editor code,
+.ai-message-editor strong,
+.ai-message-editor em,
+.ai-message-editor span,
+.ai-message-editor div {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.ai-message-editor .bn-editor {
+  background: transparent !important;
 }

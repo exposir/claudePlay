@@ -2,7 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Message, AIProvider, OpenAIModel, AnthropicModel } from '../types/chat';
 import { ChatMessage } from './ChatMessage';
 import { ModelSelector } from './ModelSelector';
+import { TypingIndicator } from './TypingIndicator';
+import { BlockEditor } from './BlockEditor';
 import { sendMessageStream } from '../services/ai';
+import { Button } from '@/components/ui/button';
+import { Send, Square, Settings } from 'lucide-react';
 
 interface ChatInterfaceProps {
   openaiKey: string;
@@ -28,10 +32,64 @@ export function ChatInterface({
   onLogout
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [input, setInput] = useState('');
+  const [editorContent, setEditorContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Convert BlockNote JSON to markdown (preserving formatting)
+  const convertBlocksToText = (jsonContent: string): string => {
+    try {
+      const blocks = JSON.parse(jsonContent);
+      return blocks.map((block: any) => blockToMarkdown(block)).filter((text: string) => text).join('\n');
+    } catch {
+      return '';
+    }
+  };
+
+  const blockToMarkdown = (block: any): string => {
+    if (!block) return '';
+
+    const contentText = extractContentWithStyles(block.content);
+
+    switch (block.type) {
+      case 'heading':
+        const level = block.props?.level || 1;
+        return '#'.repeat(level) + ' ' + contentText;
+      case 'bulletListItem':
+        return '- ' + contentText;
+      case 'numberedListItem':
+        return '1. ' + contentText;
+      case 'codeBlock':
+        const language = block.props?.language || '';
+        return '```' + language + '\n' + contentText + '\n```';
+      case 'paragraph':
+      default:
+        return contentText;
+    }
+  };
+
+  const extractContentWithStyles = (content: any): string => {
+    if (!content) return '';
+    if (!Array.isArray(content)) return '';
+
+    return content.map((item: any) => {
+      if (typeof item === 'string') return item;
+
+      const text = item.text || '';
+      const styles = item.styles || {};
+
+      // Apply markdown formatting based on styles
+      let formatted = text;
+      if (styles.bold) formatted = '**' + formatted + '**';
+      if (styles.italic) formatted = '*' + formatted + '*';
+      if (styles.code) formatted = '`' + formatted + '`';
+      if (styles.strike) formatted = '~~' + formatted + '~~';
+
+      return formatted;
+    }).join('');
+  };
 
   useEffect(() => {
     setMessages(initialMessages);
@@ -49,8 +107,9 @@ export function ChatInterface({
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSendMessage = async (customInput?: string, customMessages?: Message[]) => {
+    const messageContent = customInput?.trim() || convertBlocksToText(editorContent).trim();
+    if (!messageContent || isLoading) return;
 
     // Check if API key exists for selected provider
     const apiKey = provider === 'openai' ? openaiKey : anthropicKey;
@@ -62,12 +121,13 @@ export function ChatInterface({
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: messageContent,
       timestamp: Date.now(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    const baseMessages = customMessages || messages;
+    setMessages([...baseMessages, userMessage]);
+    setEditorContent('');
     setIsLoading(true);
     setError(null);
 
@@ -83,11 +143,15 @@ export function ChatInterface({
 
     setMessages((prev) => [...prev, assistantMessage]);
 
+    // Create abort controller
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     await sendMessageStream(
       provider,
       apiKey,
       model,
-      [...messages, userMessage],
+      [...baseMessages, userMessage],
       (chunk) => {
         assistantContent += chunk;
         setMessages((prev) =>
@@ -100,28 +164,62 @@ export function ChatInterface({
       },
       () => {
         setIsLoading(false);
+        abortControllerRef.current = null;
       },
       (errorMsg) => {
         setError(errorMsg);
         setIsLoading(false);
+        abortControllerRef.current = null;
         setMessages((prev) => prev.filter((msg) => msg.id !== assistantMessageId));
-      }
+      },
+      abortController.signal
     );
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
     }
   };
 
+  const handleRegenerate = (messageId: string) => {
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1 || messageIndex === 0) return;
+
+    // Remove the assistant message and any messages after it
+    const messagesBeforeAssistant = messages.slice(0, messageIndex);
+
+    // Get the last user message
+    const lastUserMessage = messagesBeforeAssistant[messagesBeforeAssistant.length - 1];
+    if (!lastUserMessage || lastUserMessage.role !== 'user') return;
+
+    // Remove the last user message and regenerate
+    const baseMessages = messagesBeforeAssistant.slice(0, -1);
+    handleSendMessage(lastUserMessage.content, baseMessages);
+  };
+
+  const handleEditMessage = (messageId: string, newContent: string) => {
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1) return;
+
+    // Remove this message and all messages after it
+    const messagesBeforeEdit = messages.slice(0, messageIndex);
+
+    // Resend with new content
+    handleSendMessage(newContent, messagesBeforeEdit);
+  };
+
+
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="grid grid-rows-[auto_1fr_auto] h-full relative dreamy-bg">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
+      <div className="glass border-b border-white/10 px-6 py-4 flex justify-between items-center relative z-10">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-gray-900">AI Chat</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-lg animate-pulse">
+            ✨ Dream Chat
+          </h1>
           <ModelSelector
             provider={provider}
             model={model}
@@ -129,34 +227,42 @@ export function ChatInterface({
             onModelChange={onModelChange}
           />
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onLogout}
-          className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
+          className="gap-2 text-white/90 hover:text-white hover:bg-white/10 border border-white/20"
         >
+          <Settings className="h-4 w-4" />
           Settings
-        </button>
+        </Button>
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="overflow-y-auto px-4 py-6 relative z-10">
         {messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center text-gray-400">
-              <svg
-                className="mx-auto h-12 w-12 mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                />
-              </svg>
-              <p className="text-lg">Start a conversation</p>
-              <p className="text-sm mt-1">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center glass p-12 rounded-3xl max-w-md mx-auto">
+              <div className="relative">
+                <svg
+                  className="mx-auto h-20 w-20 mb-6 text-purple-300 animate-bounce"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                  />
+                </svg>
+                <div className="absolute inset-0 blur-xl opacity-50 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
+              </div>
+              <p className="text-2xl font-bold bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent mb-2">
+                Begin Your Journey
+              </p>
+              <p className="text-sm text-white/60">
                 Using {provider === 'openai' ? 'OpenAI' : 'Anthropic'} - {model}
               </p>
             </div>
@@ -164,8 +270,16 @@ export function ChatInterface({
         ) : (
           <div className="max-w-3xl mx-auto">
             {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
+              <ChatMessage
+                key={message.id}
+                message={message}
+                onRegenerate={message.role === 'assistant' ? () => handleRegenerate(message.id) : undefined}
+                onEdit={message.role === 'user' ? (newContent) => handleEditMessage(message.id, newContent) : undefined}
+              />
             ))}
+            {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+              <TypingIndicator />
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -173,56 +287,45 @@ export function ChatInterface({
 
       {/* Error Message */}
       {error && (
-        <div className="px-4 py-2 bg-red-50 border-t border-red-200">
-          <p className="text-sm text-red-600 text-center">Error: {error}</p>
+        <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20 relative z-10">
+          <p className="text-sm text-destructive text-center">Error: {error}</p>
         </div>
       )}
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white px-4 py-4">
-        <div className="max-w-3xl mx-auto flex gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Send a message..."
-            disabled={isLoading}
-            rows={1}
-            className="flex-1 resize-none px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!input.trim() || isLoading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+      <div className="glass border-t border-white/10 px-6 py-5 relative z-10">
+        <div className="max-w-3xl mx-auto flex gap-4 items-end">
+          <div className="flex-1 bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-white/50 overflow-hidden">
+            <BlockEditor
+              content={editorContent}
+              onChange={setEditorContent}
+              onSubmit={() => handleSendMessage()}
+              disabled={isLoading}
+            />
+          </div>
+          <Button
+            onClick={isLoading ? handleStopGeneration : () => handleSendMessage()}
+            disabled={!isLoading && !convertBlocksToText(editorContent).trim()}
+            size="lg"
+            variant={isLoading ? "destructive" : "default"}
+            className={`gap-2 px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 ${
+              isLoading
+                ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-[0_0_20px_rgba(239,68,68,0.5)] hover:shadow-[0_0_40px_rgba(239,68,68,0.8)] hover:scale-110'
+                : 'bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:shadow-[0_0_50px_rgba(168,85,247,1)] hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
+            }`}
           >
             {isLoading ? (
               <>
-                <svg
-                  className="animate-spin h-5 w-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <span>Sending...</span>
+                <Square className="h-6 w-6 animate-spin" />
+                Stop
               </>
             ) : (
-              <span>Send</span>
+              <>
+                <Send className="h-6 w-6" />
+                Send
+              </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
