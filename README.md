@@ -146,19 +146,25 @@ src/
 
 ## Deployment
 
-### Deploy to GitHub Pages
+### Automatic Deployment (GitHub Pages)
 
-This project is configured for GitHub Pages deployment:
+This project uses **GitHub Actions** for automatic deployment. Every push to the `main` branch will:
+
+1. Automatically build the project
+2. Deploy to GitHub Pages
+3. Update the live site at https://exposir.github.io/claudePlay/
+
+**No manual deployment needed!** Just push your changes to the `main` branch.
+
+#### Manual Deployment (Alternative)
+
+If you prefer manual deployment, you can use:
 
 ```bash
-# Build and deploy
 pnpm run deploy
 ```
 
-This will:
-1. Build the project
-2. Deploy to the `gh-pages` branch
-3. Your site will be available at `https://[username].github.io/claudePlay/`
+This will build and deploy directly using the `gh-pages` package.
 
 ### Deploy to Other Platforms
 
