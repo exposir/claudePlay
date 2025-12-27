@@ -1,35 +1,39 @@
 # AI Chat Application
 
-一个支持多 AI 提供商的现代化聊天应用，让你在同一个界面中使用 OpenAI 和 Anthropic Claude 的强大能力。
+A modern chat application supporting multiple AI providers, allowing you to use OpenAI and Anthropic Claude in a single interface.
 
-## 功能特性
+## Live Demo
 
-### 核心功能
+Visit the live application: **https://exposir.github.io/claudePlay/**
 
-- **多 AI 提供商支持**
-  - OpenAI (GPT-3.5, GPT-4, GPT-4 Turbo 等)
+## Features
+
+### Core Features
+
+- **Multiple AI Provider Support**
+  - OpenAI (GPT-3.5, GPT-4, GPT-4 Turbo, etc.)
   - Anthropic Claude (Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku)
 
-- **对话管理**
-  - 创建多个独立对话
-  - 对话历史自动保存
-  - 快速切换不同对话
-  - 删除不需要的对话
-  - 自动生成对话标题
+- **Conversation Management**
+  - Create multiple independent conversations
+  - Automatic conversation history saving
+  - Quick switching between conversations
+  - Delete unwanted conversations
+  - Auto-generated conversation titles
 
-- **灵活的模型选择**
-  - 每个对话可以独立选择 AI 提供商
-  - 每个对话可以独立选择模型
-  - 支持在对话中随时切换模型
+- **Flexible Model Selection**
+  - Each conversation can independently select AI provider
+  - Each conversation can independently select model
+  - Switch models anytime during conversation
 
-- **用户体验**
-  - 简洁直观的聊天界面
-  - 侧边栏快速访问历史对话
-  - Markdown 渲染支持
-  - 代码高亮显示
-  - 本地存储，数据不上传服务器
+- **User Experience**
+  - Clean and intuitive chat interface
+  - Sidebar for quick access to conversation history
+  - Markdown rendering support
+  - Code syntax highlighting
+  - Local storage - no data uploaded to servers
 
-### 支持的模型
+### Supported Models
 
 **OpenAI:**
 - GPT-3.5 Turbo
@@ -44,129 +48,148 @@
 - Claude 3 Sonnet
 - Claude 3 Haiku
 
-## 快速开始
+## Quick Start
 
-### 前置要求
+### Prerequisites
 
 - Node.js 18+
 - pnpm 9+
-- OpenAI API Key 和/或 Anthropic API Key
+- OpenAI API Key and/or Anthropic API Key
 
-### 获取 API Key
+### Getting API Keys
 
-1. **OpenAI API Key:** 访问 [OpenAI Platform](https://platform.openai.com/api-keys)
-2. **Anthropic API Key:** 访问 [Anthropic Console](https://console.anthropic.com/)
+1. **OpenAI API Key:** Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+2. **Anthropic API Key:** Visit [Anthropic Console](https://console.anthropic.com/)
 
-### 安装
+### Installation
 
 ```bash
-# 克隆项目
-git clone <your-repo-url>
+# Clone the repository
+git clone https://github.com/exposir/claudePlay.git
 cd claudePlay
 
-# 安装依赖
+# Install dependencies
 pnpm install
 
-# 启动开发服务器
+# Start development server
 pnpm dev
 ```
 
-访问 [http://localhost:5173](http://localhost:5173)
+Visit [http://localhost:5173](http://localhost:5173)
 
-### 首次使用
+### First-time Usage
 
-1. 打开应用后，输入你的 API Key（至少一个）
-2. 点击确认，开始使用
-3. 在聊天界面中输入消息
-4. 可以在顶部切换 AI 提供商和模型
+1. Open the application and enter your API Key(s) (at least one)
+2. Click confirm to start using
+3. Type messages in the chat interface
+4. Switch AI providers and models at the top
 
-## 使用说明
+## Usage Guide
 
-### 对话管理
+### Conversation Management
 
-- **新建对话:** 点击侧边栏顶部的 "新对话" 按钮
-- **切换对话:** 在侧边栏点击任意对话
-- **删除对话:** 鼠标悬停在对话上，点击删除图标
+- **New Conversation:** Click the "New Conversation" button at the top of the sidebar
+- **Switch Conversation:** Click any conversation in the sidebar
+- **Delete Conversation:** Hover over a conversation and click the delete icon
 
-### 切换 AI 模型
+### Switching AI Models
 
-在聊天界面顶部可以：
-1. 选择 AI 提供商 (OpenAI / Anthropic)
-2. 选择具体模型
-3. 切换后，新消息将使用新选择的模型
+At the top of the chat interface:
+1. Select AI provider (OpenAI / Anthropic)
+2. Select specific model
+3. New messages will use the newly selected model
 
-### 数据存储
+### Data Storage
 
-- 所有对话数据存储在浏览器的 LocalStorage 中
-- API Key 也存储在本地，不会上传到任何服务器
-- 清除浏览器数据会导致对话历史丢失
+- All conversation data is stored in browser LocalStorage
+- API Keys are also stored locally and never uploaded to any server
+- Clearing browser data will result in loss of conversation history
 
-## 开发
+## Development
 
-### 可用命令
+### Available Commands
 
 ```bash
-pnpm dev      # 启动开发服务器
-pnpm build    # 构建生产版本
-pnpm preview  # 预览生产构建
-pnpm lint     # 运行 ESLint 检查
+pnpm dev      # Start development server
+pnpm build    # Build for production
+pnpm preview  # Preview production build
+pnpm lint     # Run ESLint checks
+pnpm deploy   # Deploy to GitHub Pages
 ```
 
-### 技术栈
+### Tech Stack
 
-- **React 19** - UI 框架
-- **TypeScript 5.9** - 类型安全
-- **Vite 7** - 构建工具
-- **Tailwind CSS** - 样式框架
-- **OpenAI SDK** - OpenAI API 集成
-- **Anthropic SDK** - Claude API 集成
-- **React Markdown** - Markdown 渲染
-- **React Syntax Highlighter** - 代码高亮
+- **React 19** - UI framework
+- **TypeScript 5.9** - Type safety
+- **Vite 7** - Build tool
+- **Tailwind CSS** - Styling framework
+- **OpenAI SDK** - OpenAI API integration
+- **Anthropic SDK** - Claude API integration
+- **React Markdown** - Markdown rendering
+- **React Syntax Highlighter** - Code highlighting
 
-### 项目结构
+### Project Structure
 
 ```
 src/
-├── components/          # React 组件
-│   ├── ApiKeyInput.tsx      # API Key 输入组件
-│   ├── ChatInterface.tsx    # 聊天界面
-│   └── ConversationSidebar.tsx  # 对话侧边栏
-├── types/              # TypeScript 类型定义
-│   └── chat.ts             # 聊天相关类型
-├── utils/              # 工具函数
-│   └── conversations.ts    # 对话管理工具
-├── App.tsx             # 主应用组件
-└── main.tsx            # 应用入口
+├── components/              # React components
+│   ├── ApiKeyInput.tsx         # API Key input component
+│   ├── ChatInterface.tsx       # Chat interface
+│   └── ConversationSidebar.tsx # Conversation sidebar
+├── types/                   # TypeScript type definitions
+│   └── chat.ts                 # Chat-related types
+├── utils/                   # Utility functions
+│   └── conversations.ts        # Conversation management
+├── App.tsx                  # Main application component
+└── main.tsx                 # Application entry point
 ```
 
-## 部署
+## Deployment
+
+### Deploy to GitHub Pages
+
+This project is configured for GitHub Pages deployment:
 
 ```bash
-# 构建生产版本
-pnpm build
-
-# dist/ 目录可以部署到任何静态托管服务
+# Build and deploy
+pnpm run deploy
 ```
 
-**推荐的托管平台:**
-- [Vercel](https://vercel.com)
-- [Netlify](https://netlify.com)
-- [Cloudflare Pages](https://pages.cloudflare.com)
+This will:
+1. Build the project
+2. Deploy to the `gh-pages` branch
+3. Your site will be available at `https://[username].github.io/claudePlay/`
 
-## 注意事项
+### Deploy to Other Platforms
 
-- API Key 仅存储在本地浏览器中，请妥善保管
-- 使用 AI 服务会产生费用，请查看各服务商的定价
-- 建议设置 API 使用限额，避免意外超支
-- 对话数据存储在本地，切换浏览器或清除数据会丢失历史记录
+Build the project:
 
-## 许可证
+```bash
+pnpm build
+```
+
+The `dist/` directory can be deployed to any static hosting service.
+
+**Recommended hosting platforms:**
+- [Vercel](https://vercel.com) - Zero configuration deployment
+- [Netlify](https://netlify.com) - Continuous deployment from Git
+- [Cloudflare Pages](https://pages.cloudflare.com) - Fast global CDN
+- [GitHub Pages](https://pages.github.com) - Free static hosting
+
+## Important Notes
+
+- API Keys are stored only in your local browser - keep them safe
+- Using AI services incurs costs - check pricing from each provider
+- Recommend setting API usage limits to avoid unexpected charges
+- Conversation data is stored locally - switching browsers or clearing data will lose history
+
+## License
 
 MIT
 
-## 相关资源
+## Resources
 
-- [OpenAI API 文档](https://platform.openai.com/docs)
-- [Anthropic API 文档](https://docs.anthropic.com/)
-- [React 文档](https://react.dev)
-- [开发指南](./CLAUDE.md)
+- [OpenAI API Documentation](https://platform.openai.com/docs)
+- [Anthropic API Documentation](https://docs.anthropic.com/)
+- [React Documentation](https://react.dev)
+- [Development Guidelines](./CLAUDE.md)
