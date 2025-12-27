@@ -132,7 +132,7 @@ function App() {
     const updatedConversations = conversations.map(conv => {
       if (conv.id === activeConversationId) {
         // Set default model for the new provider
-        const defaultModel = provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-5-sonnet-20241022';
+        const defaultModel: OpenAIModel | AnthropicModel = provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-5-sonnet-20241022';
         return {
           ...conv,
           provider,

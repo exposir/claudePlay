@@ -1,4 +1,4 @@
-import { Conversation, Message, AIProvider, OpenAIModel, AnthropicModel } from '../types/chat';
+import { Conversation, AIProvider, OpenAIModel, AnthropicModel } from '../types/chat';
 
 const CONVERSATIONS_KEY = 'chatgpt_conversations';
 const ACTIVE_CONVERSATION_KEY = 'chatgpt_active_conversation';
