@@ -7,6 +7,7 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  images?: string[]; // Array of base64 data URIs
   timestamp: number;
 }
 

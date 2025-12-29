@@ -246,6 +246,18 @@ export function ChatMessage({ message, onCopy, onRegenerate, onEdit }: ChatMessa
             </div>
           ) : (
             <>
+              {message.images && message.images.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {message.images.map((img, idx) => (
+                    <img 
+                      key={idx} 
+                      src={img} 
+                      alt={`Uploaded ${idx + 1}`} 
+                      className="max-w-full h-auto max-h-64 rounded-lg border border-white/10 shadow-sm" 
+                    />
+                  ))}
+                </div>
+              )}
               <div className={`block-editor-wrapper border-0 rounded-lg overflow-hidden ${isUser ? 'user-message-editor' : 'ai-message-editor'}`}>
                 <BlockNoteView
                   editor={editor}

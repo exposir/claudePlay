@@ -4,6 +4,12 @@ import { Message } from '../types/chat';
 // 代理服务地址，如果为空则使用官方 API
 const ANTHROPIC_BASE_URL = localStorage.getItem('anthropic_base_url') || '';
 
+function parseDataUri(dataUri: string) {
+  const matches = dataUri.match(/^data:([^;]+);base64,(.+)$/);
+  if (!matches) return null;
+  return { mediaType: matches[1], data: matches[2] };
+}
+
 export async function sendMessageStreamAnthropic(
   apiKey: string,
   model: string,
@@ -20,15 +26,52 @@ export async function sendMessageStreamAnthropic(
       dangerouslyAllowBrowser: true,
     });
 
+    const formattedMessages = messages
+      .filter((msg) => msg.role !== 'system')
+      .map((msg) => {
+        if (msg.images && msg.images.length > 0) {
+          const content: any[] = [];
+          
+          // Add images first (Anthropic recommendation? Or text first? Usually doesn't matter, but text usually explains image)
+          // Actually, standard is images then text or text then images. Let's append images then text.
+          
+          msg.images.forEach(img => {
+            const parsed = parseDataUri(img);
+            if (parsed) {
+              content.push({
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: parsed.mediaType,
+                  data: parsed.data,
+                }
+              });
+            }
+          });
+
+          if (msg.content) {
+            content.push({
+              type: 'text',
+              text: msg.content
+            });
+          }
+
+          return {
+            role: msg.role as 'user' | 'assistant',
+            content: content
+          };
+        }
+
+        return {
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        };
+      });
+
     const stream = await anthropic.messages.stream({
       model,
       max_tokens: 4096,
-      messages: messages
-        .filter((msg) => msg.role !== 'system')
-        .map((msg) => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-        })),
+      messages: formattedMessages,
     }, {
       signal,
     });

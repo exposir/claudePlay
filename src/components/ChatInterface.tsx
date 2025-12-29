@@ -6,35 +6,39 @@ import { TypingIndicator } from './TypingIndicator';
 import { BlockEditor } from './BlockEditor';
 import { sendMessageStream } from '../services/ai';
 import { Button } from '@/components/ui/button';
-import { Send, Square, Settings } from 'lucide-react';
+import { Send, Square, Settings, ImagePlus, X } from 'lucide-react';
+import { useChatStore } from '../store/chatStore';
 
 interface ChatInterfaceProps {
-  openaiKey: string;
-  anthropicKey: string;
-  messages: Message[];
-  provider: AIProvider;
-  model: OpenAIModel | AnthropicModel;
-  onMessagesUpdate: (messages: Message[]) => void;
-  onProviderChange: (provider: AIProvider) => void;
-  onModelChange: (model: OpenAIModel | AnthropicModel) => void;
-  onLogout: () => void;
+  onSettingsClick: () => void;
 }
 
-export function ChatInterface({
-  openaiKey,
-  anthropicKey,
-  messages: initialMessages,
-  provider,
-  model,
-  onMessagesUpdate,
-  onProviderChange,
-  onModelChange,
-  onLogout
-}: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+export function ChatInterface({ onSettingsClick }: ChatInterfaceProps) {
+  const { 
+    conversations, 
+    activeId, 
+    apiKeys, 
+    updateMessages, 
+    updateConversationSettings 
+  } = useChatStore();
+
+  const activeConversation = conversations.find(c => c.id === activeId);
+  const messages = activeConversation?.messages || [];
+  const provider = activeConversation?.provider || 'openai';
+  const model = activeConversation?.model || 'gpt-3.5-turbo';
+
   const [editorContent, setEditorContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Image upload state
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Local state for streaming response to avoid frequent store updates
+  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -91,28 +95,44 @@ export function ChatInterface({
     }).join('');
   };
 
-  useEffect(() => {
-    setMessages(initialMessages);
-  }, [initialMessages]);
-
-  useEffect(() => {
-    onMessagesUpdate(messages);
-  }, [messages]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, streamingContent]);
 
-  const handleSendMessage = async (customInput?: string, customMessages?: Message[]) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      Array.from(e.target.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setSelectedImages(prev => [...prev, reader.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      // Reset input so same file can be selected again
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSendMessage = async (customInput?: string, customMessages?: Message[], customImages?: string[]) => {
+    if (!activeId) return;
+
     const messageContent = customInput?.trim() || convertBlocksToText(editorContent).trim();
-    if (!messageContent || isLoading) return;
+    const hasImages = customImages ? customImages.length > 0 : selectedImages.length > 0;
+    
+    if ((!messageContent && !hasImages) || isLoading) return;
 
     // Check if API key exists for selected provider
-    const apiKey = provider === 'openai' ? openaiKey : anthropicKey;
+    const apiKey = provider === 'openai' ? apiKeys.openai : apiKeys.anthropic;
     if (!apiKey) {
       setError(`Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in settings`);
       return;
@@ -122,55 +142,63 @@ export function ChatInterface({
       id: Date.now().toString(),
       role: 'user',
       content: messageContent,
+      images: hasImages ? (customImages || selectedImages) : undefined,
       timestamp: Date.now(),
     };
 
     const baseMessages = customMessages || messages;
-    setMessages([...baseMessages, userMessage]);
+    // Optimistically update store with user message
+    const newMessages = [...baseMessages, userMessage];
+    await updateMessages(activeId, newMessages);
+    
     setEditorContent('');
+    setSelectedImages([]); // Clear images
     setIsLoading(true);
     setError(null);
 
     const assistantMessageId = (Date.now() + 1).toString();
-    let assistantContent = '';
-
-    const assistantMessage: Message = {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
+    setStreamingMessageId(assistantMessageId);
+    setStreamingContent('');
 
     // Create abort controller
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
+    let finalContent = '';
+
     await sendMessageStream(
       provider,
       apiKey,
       model,
-      [...baseMessages, userMessage],
+      newMessages,
+      activeId, // Pass conversation ID
       (chunk) => {
-        assistantContent += chunk;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: assistantContent }
-              : msg
-          )
-        );
+        finalContent += chunk;
+        setStreamingContent(finalContent);
       },
-      () => {
+      async () => {
+        // Stream finished
         setIsLoading(false);
         abortControllerRef.current = null;
+        setStreamingMessageId(null);
+        setStreamingContent('');
+        
+        // Save assistant message to store
+        const assistantMessage: Message = {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: finalContent,
+            timestamp: Date.now(),
+        };
+        await updateMessages(activeId, [...newMessages, assistantMessage]);
       },
       (errorMsg) => {
         setError(errorMsg);
         setIsLoading(false);
         abortControllerRef.current = null;
-        setMessages((prev) => prev.filter((msg) => msg.id !== assistantMessageId));
+        setStreamingMessageId(null);
+        setStreamingContent('');
+        // No need to revert user message, just don't add assistant message
       },
       abortController.signal
     );
@@ -181,6 +209,19 @@ export function ChatInterface({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsLoading(false);
+      // Save partial content
+      if (activeId && streamingMessageId && streamingContent) {
+          const assistantMessage: Message = {
+            id: streamingMessageId,
+            role: 'assistant',
+            content: streamingContent,
+            timestamp: Date.now(),
+        };
+        const currentMsgs = conversations.find(c => c.id === activeId)?.messages || [];
+        updateMessages(activeId, [...currentMsgs, assistantMessage]);
+      }
+      setStreamingMessageId(null);
+      setStreamingContent('');
     }
   };
 
@@ -195,27 +236,54 @@ export function ChatInterface({
     const lastUserMessage = messagesBeforeAssistant[messagesBeforeAssistant.length - 1];
     if (!lastUserMessage || lastUserMessage.role !== 'user') return;
 
-    // Remove the last user message and regenerate
+    // Remove the last user message for the API call context
     const baseMessages = messagesBeforeAssistant.slice(0, -1);
-    handleSendMessage(lastUserMessage.content, baseMessages);
+    
+    // Pass the content and images of the last user message for regeneration
+    handleSendMessage(lastUserMessage.content, baseMessages, lastUserMessage.images);
   };
-
+  
   const handleEditMessage = (messageId: string, newContent: string) => {
     const messageIndex = messages.findIndex(msg => msg.id === messageId);
     if (messageIndex === -1) return;
 
-    // Remove this message and all messages after it
     const messagesBeforeEdit = messages.slice(0, messageIndex);
-
-    // Resend with new content
-    handleSendMessage(newContent, messagesBeforeEdit);
+    const oldMsg = messages[messageIndex]; // Get the original message to preserve its images
+    handleSendMessage(newContent, messagesBeforeEdit, oldMsg.images);
   };
 
+  const onProviderChange = (newProvider: AIProvider) => {
+      if (activeId) {
+          const defaultModel = newProvider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-5-sonnet-20241022';
+          updateConversationSettings(activeId, { provider: newProvider, model: defaultModel });
+      }
+  };
+
+  const onModelChange = (newModel: OpenAIModel | AnthropicModel) => {
+      if (activeId) {
+          updateConversationSettings(activeId, { model: newModel });
+      }
+  };
+
+  // Construct display messages
+  const displayMessages = [...messages];
+  if (streamingMessageId && isLoading) {
+      displayMessages.push({
+          id: streamingMessageId,
+          role: 'assistant',
+          content: streamingContent,
+          timestamp: Date.now()
+      });
+  }
+
+  if (!activeConversation) {
+      return <div className="flex h-full items-center justify-center text-gray-500">Select a conversation</div>;
+  }
 
   return (
-    <div className="grid grid-rows-[auto_1fr_auto] h-full relative dreamy-bg">
+    <div className="flex-1 flex flex-col overflow-hidden relative dreamy-bg">
       {/* Header */}
-      <div className="glass border-b border-white/10 px-6 py-4 flex justify-between items-center relative z-10">
+      <div className="shrink-0 glass border-b border-white/10 px-6 py-4 flex justify-between items-center relative z-10">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-lg animate-pulse">
             ✨ Dream Chat
@@ -230,7 +298,7 @@ export function ChatInterface({
         <Button
           variant="ghost"
           size="sm"
-          onClick={onLogout}
+          onClick={onSettingsClick}
           className="gap-2 text-white/90 hover:text-white hover:bg-white/10 border border-white/20"
         >
           <Settings className="h-4 w-4" />
@@ -239,8 +307,8 @@ export function ChatInterface({
       </div>
 
       {/* Messages Container */}
-      <div className="overflow-y-auto px-4 py-6 relative z-10">
-        {messages.length === 0 ? (
+      <div className="flex-1 overflow-y-auto px-4 py-6 relative z-10">
+        {displayMessages.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center glass p-12 rounded-3xl max-w-md mx-auto">
               <div className="relative">
@@ -269,15 +337,15 @@ export function ChatInterface({
           </div>
         ) : (
           <div className="max-w-3xl mx-auto">
-            {messages.map((message) => (
+            {displayMessages.map((message) => (
               <ChatMessage
                 key={message.id}
                 message={message}
-                onRegenerate={message.role === 'assistant' ? () => handleRegenerate(message.id) : undefined}
-                onEdit={message.role === 'user' ? (newContent) => handleEditMessage(message.id, newContent) : undefined}
+                onRegenerate={message.role === 'assistant' && !isLoading ? () => handleRegenerate(message.id) : undefined}
+                onEdit={message.role === 'user' && !isLoading ? (newContent) => handleEditMessage(message.id, newContent) : undefined}
               />
             ))}
-            {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+            {isLoading && (
               <TypingIndicator />
             )}
             <div ref={messagesEndRef} />
@@ -293,41 +361,88 @@ export function ChatInterface({
       )}
 
       {/* Input Area */}
-      <div className="glass border-t border-white/10 px-6 py-5 relative z-10">
-        <div className="max-w-3xl mx-auto flex gap-4 items-end">
-          <div className="flex-1 bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-white/50 overflow-hidden">
-            <BlockEditor
-              content={editorContent}
-              onChange={setEditorContent}
-              onSubmit={() => handleSendMessage()}
-              disabled={isLoading}
-            />
+      <div className="shrink-0 glass border-t border-white/10 px-6 py-5 relative z-10">
+        <div className="max-w-3xl mx-auto">
+          {/* Image Previews */}
+          {selectedImages.length > 0 && (
+            <div className="flex gap-2 mb-2 overflow-x-auto py-2">
+              {selectedImages.map((img, idx) => (
+                <div key={idx} className="relative group flex-shrink-0">
+                  <img 
+                    src={img} 
+                    alt="Preview" 
+                    className="h-20 w-20 object-cover rounded-lg border border-white/20" 
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(idx)}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="flex gap-4 items-end">
+            <div className="flex-1 bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-white/50 overflow-hidden flex items-end">
+               {/* Attachment Button */}
+               <div className="pl-3 pb-3">
+                 <input 
+                   type="file" 
+                   ref={fileInputRef} 
+                   onChange={handleFileSelect} 
+                   className="hidden" 
+                   accept="image/*" 
+                   multiple 
+                 />
+                 <Button
+                   variant="ghost"
+                   size="icon"
+                   className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                   onClick={() => fileInputRef.current?.click()}
+                   title="Upload Images"
+                 >
+                   <ImagePlus className="h-5 w-5" />
+                 </Button>
+               </div>
+              
+              <div className="flex-1">
+                <BlockEditor
+                  content={editorContent}
+                  onChange={setEditorContent}
+                  onSubmit={() => handleSendMessage()}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <Button
+              onClick={isLoading ? handleStopGeneration : () => handleSendMessage()}
+              disabled={!isLoading && !convertBlocksToText(editorContent).trim() && selectedImages.length === 0}
+              size="lg"
+              variant={isLoading ? "destructive" : "default"}
+              className={`gap-2 px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 ${ 
+                isLoading
+                  ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-[0_0_20px_rgba(239,68,68,0.5)] hover:shadow-[0_0_40px_rgba(239,68,68,0.8)] hover:scale-110'
+                  : 'bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:shadow-[0_0_50px_rgba(168,85,247,1)] hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
+              }`}
+            >
+              {isLoading ? (
+                <>
+                  <Square className="h-6 w-6 animate-spin" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Send className="h-6 w-6" />
+                  Send
+                </>
+              )}
+            </Button>
           </div>
-          <Button
-            onClick={isLoading ? handleStopGeneration : () => handleSendMessage()}
-            disabled={!isLoading && !convertBlocksToText(editorContent).trim()}
-            size="lg"
-            variant={isLoading ? "destructive" : "default"}
-            className={`gap-2 px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 ${
-              isLoading
-                ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-[0_0_20px_rgba(239,68,68,0.5)] hover:shadow-[0_0_40px_rgba(239,68,68,0.8)] hover:scale-110'
-                : 'bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:shadow-[0_0_50px_rgba(168,85,247,1)] hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
-            }`}
-          >
-            {isLoading ? (
-              <>
-                <Square className="h-6 w-6 animate-spin" />
-                Stop
-              </>
-            ) : (
-              <>
-                <Send className="h-6 w-6" />
-                Send
-              </>
-            )}
-          </Button>
         </div>
       </div>
     </div>
   );
 }
+

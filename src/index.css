@@ -53,6 +53,9 @@
   * {
     @apply border-border;
   }
+  html, body, #root {
+    @apply h-full w-full overflow-hidden;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -115,9 +118,9 @@
   background: linear-gradient(-45deg, #1e1b4b, #312e81, #4c1d95, #5b21b6, #6366f1, #8b5cf6);
   background-size: 400% 400%;
   animation: gradient-shift 15s ease infinite;
-  position: relative;
 }
 
+/* Disabled aurora effects for now - they were causing layout issues
 .dreamy-bg::before,
 .dreamy-bg::after {
   content: '';
@@ -128,6 +131,8 @@
   filter: blur(100px);
   opacity: 0.5;
   animation: aurora 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .dreamy-bg::before {
@@ -142,6 +147,7 @@
   right: -250px;
   animation-delay: -10s;
 }
+*/
 
 /* Glass Morphism */
 .glass {

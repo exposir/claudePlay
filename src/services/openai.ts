@@ -16,12 +16,28 @@ export async function sendMessageStreamOpenAI(
       dangerouslyAllowBrowser: true, // Note: For production, use a backend proxy
     });
 
-    const stream = await openai.chat.completions.create({
-      model,
-      messages: messages.map((msg) => ({
+    const formattedMessages = messages.map((msg) => {
+      if (msg.images && msg.images.length > 0) {
+        return {
+          role: msg.role,
+          content: [
+            { type: 'text', text: msg.content },
+            ...msg.images.map(img => ({
+              type: 'image_url' as const,
+              image_url: { url: img }
+            }))
+          ]
+        };
+      }
+      return {
         role: msg.role,
         content: msg.content,
-      })),
+      };
+    });
+
+    const stream = await openai.chat.completions.create({
+      model,
+      messages: formattedMessages as any, // Type assertion needed due to complex union types
       stream: true,
     }, {
       signal,

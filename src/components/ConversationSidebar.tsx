@@ -1,23 +1,17 @@
 import { useState, useMemo } from 'react';
 import { Conversation } from '../types/chat';
+import { useChatStore } from '../store/chatStore';
 
-interface ConversationSidebarProps {
-  conversations: Conversation[];
-  activeConversationId: string;
-  onSelectConversation: (id: string) => void;
-  onNewConversation: () => void;
-  onDeleteConversation: (id: string) => void;
-  onTogglePin: (id: string) => void;
-}
+export function ConversationSidebar() {
+  const { 
+    conversations, 
+    activeId, 
+    selectConversation, 
+    createConversation, 
+    deleteConversation, 
+    togglePin 
+  } = useChatStore();
 
-export function ConversationSidebar({
-  conversations,
-  activeConversationId,
-  onSelectConversation,
-  onNewConversation,
-  onDeleteConversation,
-  onTogglePin,
-}: ConversationSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter and group conversations
@@ -55,15 +49,16 @@ export function ConversationSidebar({
 
     return { pinnedConversations: pinned, groupedConversations: grouped };
   }, [conversations, searchQuery]);
+
   const renderConversation = (conversation: Conversation) => (
     <div
       key={conversation.id}
       className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-        conversation.id === activeConversationId
+        conversation.id === activeId
           ? 'bg-gray-700'
           : 'hover:bg-gray-800'
       }`}
-      onClick={() => onSelectConversation(conversation.id)}
+      onClick={() => selectConversation(conversation.id)}
     >
       <svg
         className="w-4 h-4 flex-shrink-0"
@@ -85,7 +80,7 @@ export function ConversationSidebar({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onTogglePin(conversation.id);
+            togglePin(conversation.id);
           }}
           className="p-1 hover:bg-gray-600 rounded"
           title={conversation.pinned ? 'Unpin' : 'Pin'}
@@ -97,7 +92,7 @@ export function ConversationSidebar({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDeleteConversation(conversation.id);
+            deleteConversation(conversation.id);
           }}
           className="p-1 hover:bg-gray-600 rounded"
           title="Delete"
@@ -121,11 +116,11 @@ export function ConversationSidebar({
   );
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col h-screen">
+    <div className="w-64 bg-gray-900 text-white flex flex-col h-full">
       {/* New Chat Button */}
       <div className="p-3 border-b border-gray-700">
         <button
-          onClick={onNewConversation}
+          onClick={() => createConversation()}
           className="w-full flex items-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
         >
           <svg
