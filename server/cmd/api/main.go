@@ -6,6 +6,8 @@ import (
 	"claude-play-backend/internal/server"
 	"fmt"
 	"log"
+	"net/http"
+	"time"
 )
 
 func main() {
@@ -19,7 +21,16 @@ func main() {
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	log.Printf("Server starting on %s", addr)
-	if err := r.Run(addr); err != nil {
+
+	httpServer := &http.Server{
+		Addr:              addr,
+		Handler:           r,
+		ReadTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

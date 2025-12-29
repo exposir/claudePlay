@@ -1,7 +1,11 @@
 import { AIProvider, Message } from '../types/chat';
 import { sendMessageStreamAnthropic } from './anthropic';
 
-const BACKEND_URL = 'http://localhost:8081/api/chat/stream';
+const DEFAULT_BACKEND_URL = 'http://localhost:8081';
+const RAW_BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? DEFAULT_BACKEND_URL;
+const NORMALIZED_BACKEND_URL = RAW_BACKEND_URL.replace(/\/$/, '');
+const BACKEND_URL = `${NORMALIZED_BACKEND_URL}/api/chat/stream`;
+const BACKEND_API_KEY = import.meta.env.VITE_BACKEND_API_KEY as string | undefined;
 
 export async function sendMessageStream(
   provider: AIProvider,
@@ -20,7 +24,9 @@ export async function sendMessageStream(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(BACKEND_API_KEY ? { 'X-API-Key': BACKEND_API_KEY } : {})
         },
+        signal,
         body: JSON.stringify({
           provider: 'openai',
           model,
@@ -30,7 +36,8 @@ export async function sendMessageStream(
             content: m.content,
             images: m.images
           }))
-        }),
+        })
+      });
 
       if (!response.ok) {
         const errorText = await response.text();

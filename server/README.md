@@ -23,12 +23,20 @@ go mod download
 go run cmd/api/main.go
 ```
 
-The server defaults to port `8080`.
-Access the health check at: `http://localhost:8080/api/health`
+The server defaults to port `8081`.
+Access the health check at: `http://localhost:8081/api/health`
 
 ## Configuration
 
+Copy `server/.env.example` to `server/.env` to set local overrides.
+
 Environment variables can be used to override defaults:
 
-- `PORT`: Server port (default 8080)
+- `PORT`: Server port (default 8081)
 - `MODE`: `debug` or `release` (default debug)
+- `OPENAI_API_KEY`: OpenAI API key (required for `/api/chat/stream`)
+- `OPENAI_BASE_URL`: Override OpenAI base URL
+- `DB_PATH`: SQLite database path
+- `DATABASE_URL`: Postgres connection string
+- `CORS_ALLOWED_ORIGINS`: Comma-separated origins for CORS
+- `SERVER_API_KEY`: Shared secret for backend access (`X-API-Key` header)

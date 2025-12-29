@@ -13,6 +13,7 @@ Frontend (from repo root, uses pnpm):
 - `pnpm build`: Type-check and build to `dist/`.
 - `pnpm preview`: Serve the production build locally.
 - `pnpm lint`: Run ESLint.
+- `pnpm test`: Run Vitest unit tests.
 - `pnpm deploy`: Build and publish `dist/` to GitHub Pages.
 
 Backend (from `server/`):
@@ -25,10 +26,9 @@ Backend (from `server/`):
 - Linting: ESLint via `eslint.config.js`. Run `pnpm lint` before PRs.
 
 ## Testing Guidelines
-- No automated test suite is configured yet. If adding tests:
-  - Frontend: prefer `*.test.tsx` or `__tests__/` near related modules.
-  - Backend: Go tests in `*_test.go` under `server/`.
-  - Add the matching test script to `package.json` or document it in this file.
+- Frontend uses Vitest; keep tests near modules (e.g., `src/utils/*.test.ts`).
+- Backend uses Go's standard test runner (`go test ./...`) with `*_test.go` files.
+- Keep unit tests small and deterministic; avoid network calls in CI.
 
 ## Commit & Pull Request Guidelines
 - Commits follow Conventional Commit style (`feat:`, `docs:`, `ci:`, `chore:`). Keep messages short and scoped.
@@ -37,4 +37,5 @@ Backend (from `server/`):
 
 ## Configuration & Security Notes
 - API keys are stored in browser local storage; never commit real keys or dump them in logs.
-- Backend config supports `PORT` and `MODE` (see `server/README.md`).
+- Copy `.env.example` (frontend) and `server/.env.example` (backend) for local configuration.
+- Backend config supports `PORT`, `MODE`, `OPENAI_API_KEY`, and optional `SERVER_API_KEY` (see `server/README.md`).
